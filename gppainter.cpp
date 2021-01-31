@@ -33,10 +33,15 @@ SDL_Texture *texture;
 const int win_w = 800;
 const int win_h = 600;
 
+int16_t xaxis = 0;
+int16_t yaxis = 0;
+
 void do_frame() {
     SDL_Rect src, dst;
-    const auto xaxis = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_LEFTX);
-    const auto yaxis = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_LEFTY);
+    if(SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_LEFTSHOULDER)) {
+        xaxis = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_LEFTX);
+        yaxis = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_LEFTY);
+    }
     const auto trigger = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
     double angle = 0;
     if(abs(xaxis) > 2000 || abs(yaxis) > 2000) {
