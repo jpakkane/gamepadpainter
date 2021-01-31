@@ -22,26 +22,59 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include <SDL.h>
+#include <nib.h>
 
 SDL_Window *window;
 SDL_Renderer *renderer;
+SDL_GameController *gamepad = nullptr;
+SDL_Surface *surface;
+SDL_Texture *texture;
+
+const int win_w = 800;
+const int win_h = 600;
+
+void do_frame() {
+    SDL_RenderClear(renderer);
+    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
+    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+    SDL_RenderPresent(renderer);
+}
 
 int main() {
-    SDL_Surface *surface;
-    SDL_Texture *texture;
-    SDL_Event event;
+    SDL_Event e;
 
-    if(SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
         printf("Couldn't initialize SDL: %s", SDL_GetError());
         return 1;
     }
 
-    if(SDL_CreateWindowAndRenderer(320, 240, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
+    if(SDL_CreateWindowAndRenderer(win_w, win_h, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
         printf("Couldn't create window and renderer: %s", SDL_GetError());
         return 1;
     }
+    SDL_SetWindowTitle(window, "Gamepad painter");
 
-    surface = SDL_LoadBMP("sample.bmp");
+    for(int i = 0; i < SDL_NumJoysticks(); ++i) {
+        if(SDL_IsGameController(i)) {
+            gamepad = SDL_GameControllerOpen(i);
+            if(gamepad) {
+                printf("Using controller: %s\n", SDL_GameControllerName(gamepad));
+                break;
+            } else {
+                printf("Controller open fail: %s", SDL_GetError());
+                std::abort();
+            }
+        }
+    }
+    if(!gamepad) {
+        SDL_ShowSimpleMessageBox(
+            SDL_MESSAGEBOX_ERROR, "Init failed", "Gamepad not detected.", window);
+        std::abort();
+    }
+
+    SDL_RWops *rwops = SDL_RWFromMem(nib_bmp, nib_bmp_len);
+    surface = SDL_LoadBMP_RW(rwops, 0);
+    SDL_RWclose(rwops);
     if(!surface) {
         printf("Couldn't create surface from image: %s", SDL_GetError());
         return 1;
@@ -52,20 +85,18 @@ int main() {
         return 1;
     }
 
+    SDL_RenderClear(renderer);
     while(1) {
-        SDL_PollEvent(&event);
+        SDL_PollEvent(&e);
         if(e.type == SDL_KEYDOWN) {
             if(e.key.keysym.sym == SDLK_ESCAPE || e.key.keysym.sym == SDLK_q) {
                 break;
             }
         }
-        if(event.type == SDL_QUIT) {
+        if(e.type == SDL_QUIT) {
             break;
         }
-        SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
-        SDL_RenderClear(renderer);
-        SDL_RenderCopy(renderer, texture, nullptr, nullptr);
-        SDL_RenderPresent(renderer);
+        do_frame();
     }
 
     SDL_DestroyTexture(texture);
