@@ -33,6 +33,9 @@ SDL_Texture *texture;
 const int win_w = 800;
 const int win_h = 600;
 
+const int nib_preview_w = win_w / 10;
+const int nib_preview_h = win_h / 10;
+
 int16_t xaxis = 0;
 int16_t yaxis = 0;
 
@@ -48,16 +51,17 @@ void do_frame() {
         angle = atan2(yaxis, xaxis) / (2 * M_PI) * 360 + 90;
     }
     const double nib_size = trigger / double(32767);
-    const int nib_w = int(win_w * (0.5 + 0.5 * nib_size));
-    const int nib_h = win_h / 2;
-    dst.x = win_w / 2 - nib_w / 2;
-    dst.y = win_h / 2 - nib_h / 2;
+    const int nib_w = int(nib_preview_w * (0.5 + 0.5 * nib_size));
+    const int nib_h = nib_preview_h / 2;
+    dst.x = win_w - nib_preview_w / 2 - nib_w / 2;
+    dst.y = win_h - nib_preview_h / 2 - nib_h / 2;
     dst.w = nib_w;
     dst.h = nib_h;
     SDL_RenderClear(renderer);
     SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
     SDL_RenderCopyEx(renderer, texture, nullptr, &dst, angle, nullptr, SDL_FLIP_NONE);
     SDL_RenderPresent(renderer);
+    SDL_Delay(30);
 }
 
 int main() {
