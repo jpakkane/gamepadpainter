@@ -69,7 +69,7 @@ void do_preview() {
     const int nib_w = int(nib_preview_w * (0.2 + 0.8 * nib_size));
     const int nib_h = nib_preview_h / 8;
     blob.dst.x = win_w - nib_preview_w / 2 - nib_w / 2;
-    blob.dst.y = win_h - nib_preview_h / 2 - nib_h / 2;
+    blob.dst.y = nib_preview_h / 2 - nib_h / 2;
     blob.dst.w = nib_w;
     blob.dst.h = nib_h;
     draw_blob(blob);
