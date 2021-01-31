@@ -34,9 +34,24 @@ const int win_w = 800;
 const int win_h = 600;
 
 void do_frame() {
+    SDL_Rect src, dst;
+    const auto xaxis = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_LEFTX);
+    const auto yaxis = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_LEFTY);
+    const auto trigger = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+    double angle = 0;
+    if(abs(xaxis) > 2000 || abs(yaxis) > 2000) {
+        angle = atan2(yaxis, xaxis) / (2 * M_PI) * 360 + 90;
+    }
+    const double nib_size = trigger / double(32767);
+    const int nib_w = int(win_w * (0.5 + 0.5 * nib_size));
+    const int nib_h = win_h / 2;
+    dst.x = win_w / 2 - nib_w / 2;
+    dst.y = win_h / 2 - nib_h / 2;
+    dst.w = nib_w;
+    dst.h = nib_h;
     SDL_RenderClear(renderer);
     SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
-    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+    SDL_RenderCopyEx(renderer, texture, nullptr, &dst, angle, nullptr, SDL_FLIP_NONE);
     SDL_RenderPresent(renderer);
 }
 
@@ -93,6 +108,16 @@ int main() {
                 break;
             }
         }
+        if(e.type == SDL_CONTROLLERBUTTONDOWN) {
+            if(e.cbutton.button == SDL_CONTROLLER_BUTTON_B ||
+               e.cbutton.button == SDL_CONTROLLER_BUTTON_BACK) {
+                break;
+            }
+            if(e.cbutton.button == SDL_CONTROLLER_BUTTON_Y) {
+                SDL_RenderClear(renderer);
+            }
+        }
+
         if(e.type == SDL_QUIT) {
             break;
         }
