@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <SDL.h>
 #include <nib.h>
+#include <vector>
 
 SDL_Window *window;
 SDL_Renderer *renderer;
@@ -36,32 +37,73 @@ const int win_h = 600;
 const int nib_preview_w = win_w / 10;
 const int nib_preview_h = win_h / 10;
 
+const int nib_draw_w = win_w / 20;
+const int nib_draw_h = win_h / 20;
+
 int16_t xaxis = 0;
 int16_t yaxis = 0;
 
-void do_frame() {
-    SDL_Rect src, dst;
+struct Blob {
+    SDL_Rect dst;
+    double angle;
+};
+
+std::vector<Blob> stroke;
+
+void draw_blob(const Blob &b) {
+    SDL_RenderCopyEx(renderer, texture, nullptr, &b.dst, b.angle, nullptr, SDL_FLIP_NONE);
+}
+
+void do_preview() {
+    Blob blob;
     if(SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_LEFTSHOULDER)) {
         xaxis = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_LEFTX);
         yaxis = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_LEFTY);
     }
     const auto trigger = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
-    double angle = 0;
+    blob.angle = 0;
     if(abs(xaxis) > 2000 || abs(yaxis) > 2000) {
-        angle = atan2(yaxis, xaxis) / (2 * M_PI) * 360 + 90;
+        blob.angle = atan2(yaxis, xaxis) / (2 * M_PI) * 360 + 90;
     }
     const double nib_size = trigger / double(32767);
-    const int nib_w = int(nib_preview_w * (0.5 + 0.5 * nib_size));
-    const int nib_h = nib_preview_h / 2;
-    dst.x = win_w - nib_preview_w / 2 - nib_w / 2;
-    dst.y = win_h - nib_preview_h / 2 - nib_h / 2;
-    dst.w = nib_w;
-    dst.h = nib_h;
+    const int nib_w = int(nib_preview_w * (0.2 + 0.8 * nib_size));
+    const int nib_h = nib_preview_h / 8;
+    blob.dst.x = win_w - nib_preview_w / 2 - nib_w / 2;
+    blob.dst.y = win_h - nib_preview_h / 2 - nib_h / 2;
+    blob.dst.w = nib_w;
+    blob.dst.h = nib_h;
+    draw_blob(blob);
+}
+
+void do_stroke() {
+    int x, y;
+    if(SDL_GetMouseState(&x, &y) & SDL_BUTTON(SDL_BUTTON_LEFT)) {
+        Blob blob;
+        const auto trigger = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+        blob.angle = 0;
+        if(abs(xaxis) > 2000 || abs(yaxis) > 2000) {
+            blob.angle = atan2(yaxis, xaxis) / (2 * M_PI) * 360 + 90;
+        }
+        const double nib_size = trigger / double(32767);
+        const int nib_w = int(nib_draw_w * (0.2 + 0.8 * nib_size));
+        const int nib_h = nib_draw_h / 8;
+        blob.dst.x = x - nib_w / 2;
+        blob.dst.y = y - nib_h / 2;
+        blob.dst.w = nib_w;
+        blob.dst.h = nib_h;
+        stroke.push_back(blob);
+    }
+    for(const auto &b : stroke) {
+        draw_blob(b);
+    }
+}
+
+void do_frame() {
     SDL_RenderClear(renderer);
     SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
-    SDL_RenderCopyEx(renderer, texture, nullptr, &dst, angle, nullptr, SDL_FLIP_NONE);
+    do_preview();
+    do_stroke();
     SDL_RenderPresent(renderer);
-    SDL_Delay(30);
 }
 
 int main() {
@@ -110,27 +152,30 @@ int main() {
     }
 
     SDL_RenderClear(renderer);
-    while(1) {
-        SDL_PollEvent(&e);
-        if(e.type == SDL_KEYDOWN) {
-            if(e.key.keysym.sym == SDLK_ESCAPE || e.key.keysym.sym == SDLK_q) {
-                break;
+    bool keep_going = true;
+    while(keep_going) {
+        while(SDL_PollEvent(&e)) {
+            if(e.type == SDL_KEYDOWN) {
+                if(e.key.keysym.sym == SDLK_ESCAPE || e.key.keysym.sym == SDLK_q) {
+                    keep_going = false;
+                }
             }
-        }
-        if(e.type == SDL_CONTROLLERBUTTONDOWN) {
-            if(e.cbutton.button == SDL_CONTROLLER_BUTTON_B ||
-               e.cbutton.button == SDL_CONTROLLER_BUTTON_BACK) {
-                break;
+            if(e.type == SDL_CONTROLLERBUTTONDOWN) {
+                if(e.cbutton.button == SDL_CONTROLLER_BUTTON_B ||
+                   e.cbutton.button == SDL_CONTROLLER_BUTTON_BACK) {
+                    keep_going = false;
+                }
+                if(e.cbutton.button == SDL_CONTROLLER_BUTTON_Y) {
+                    stroke.clear();
+                }
             }
-            if(e.cbutton.button == SDL_CONTROLLER_BUTTON_Y) {
-                SDL_RenderClear(renderer);
-            }
-        }
 
-        if(e.type == SDL_QUIT) {
-            break;
+            if(e.type == SDL_QUIT) {
+                keep_going = false;
+            }
         }
         do_frame();
+        SDL_Delay(30);
     }
 
     SDL_DestroyTexture(texture);
