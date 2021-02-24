@@ -106,7 +106,7 @@ void do_frame() {
     SDL_RenderPresent(renderer);
 }
 
-int main() {
+extern "C" int main(int argc, char **argv) {
     SDL_Event e;
 
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
